@@ -26,35 +26,7 @@ export async function getProducts() {
   }
 }
  // get specific product
-export async function getProductById(p_id) {
-  try {
-    const product = await Product.findOne({
-      where: { p_id },
-      attributes: ['p_id', 'p_name', 'p_price'],
-      include: [
-        {
-          model: Stock,
-          as: 'Stock',
-          attributes: ['s_quantity']
-        }
-      ]
-    });
 
-    if (!product) return null;
-
-    // Return a flat object
-    return {
-      p_id: product.p_id,
-      p_name: product.p_name,
-      p_price: product.p_price,
-      s_quantity: product.Stock ? product.Stock.s_quantity : 0
-    };
-
-  } catch (error) {
-    console.error("Error fetching product by ID:", error.message);
-    throw error;
-  }
-}
 // update product
 export async function updateProductById(p_id, updateData) {
   try {

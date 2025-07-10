@@ -1,8 +1,9 @@
 import express from 'express';
-import sequelize from './ulits/database.js'; 
 import './model/relational/relation.js';
 import cors from "cors";
 import router from './routes/post.js';
+import sequelize from './ulits/database.js';
+
 
 
 const app = express();

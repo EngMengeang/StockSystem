@@ -13,18 +13,7 @@ export const getAllProduct = async (req, res) => {
 };
 
 // get product by id
-export const getProductById = async (req, res) => {
-  const { id }  = req.params;
-  try {
-    const product = await psqlProduct.getProductById(id);
-    if (!product) {
-      return res.status(404).json({message: "Product not found"})
-    }
-    res.json(product);
-  } catch (error) {
-    res.status(500).json({ error: "Server error" });
-  }
-};
+
 
 
 // update product

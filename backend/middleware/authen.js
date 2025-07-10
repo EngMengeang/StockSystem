@@ -1,4 +1,4 @@
-import sequelize from './utils/database.js';
+import sequelize from "../ulits/database";
 
 const connectToDatabase = async () => {
     try {
