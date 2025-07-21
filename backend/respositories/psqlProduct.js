@@ -9,7 +9,7 @@ import Sale from "../model/sale.js";
 export async function getProducts() {
   try {
     const products = await Product.findAll({
-      attributes: ['p_name', 'p_price'],
+      attributes: ['p_id', 'p_name', 'p_price'],
       include: [
         {
           model: Stock,
@@ -197,34 +197,37 @@ export async function saleProducts(p_name, quantity) {
   }
 }
 
+// change --by manh seila
 export async function getAllSoldProducts() {
   try {
     const results = await Sale.findAll({
       attributes: [
+        [Sequelize.col('product.p_id'), 'p_id'],
         [Sequelize.col('product.p_name'), 'p_name'],
-        [Sequelize.fn('SUM', Sequelize.col('sale.quantity')), 'total_quantity_sold']
+        [Sequelize.fn('SUM', Sequelize.col('sale.quantity')), 'total_quantity_sold'],
       ],
       include: [
         {
           model: Product,
           as: 'product',
-          attributes: [] // already selecting p_name manually above
-        }
+          attributes: [], // already selecting needed fields manually
+        },
       ],
-      group: ['product.p_name'],
-      order: [[Sequelize.literal('total_quantity_sold'), 'DESC']]
+      group: ['product.p_id', 'product.p_name'],
+      order: [[Sequelize.literal('total_quantity_sold'), 'DESC']],
     });
 
-    return results.map(sale => ({
+    return results.map((sale) => ({
+      p_id: sale.get('p_id'),
       p_name: sale.get('p_name'),
-      quantity: Number(sale.get('total_quantity_sold'))
+      quantity: Number(sale.get('total_quantity_sold')),
     }));
-
   } catch (error) {
     console.error("Error fetching sold products:", error.message);
     throw error;
   }
 }
+
 
 export async function expireProductByName(p_name) {
   try {

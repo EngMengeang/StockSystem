@@ -1,0 +1,274 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BarChart } from '@mui/x-charts/BarChart';
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button";
+import { Edit, Settings, Plus, Save, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+// api
+import { getMyProducts, getProductByName, postProduct, deleteProduct, updateProduct } from '@/services/productService'
+
+export const ProductAnalysis = () => {
+  const [products, setProduct] = useState([]);
+  const [isProductDialogOpen, setIsProductDialogOpen] = useState(false)
+  const [productForm, setProductForm] = useState({
+    "p_name": "",
+    "p_price": "",
+    "imp_quantity": ""
+  })
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [loadAllData, setLoadAllData] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // bar chart
+  const [categories, setCategories] = useState([]);
+  const [quantities, setQuantities] = useState([]);
+
+  const filteredProducts = products.filter(product =>
+    product.p_name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+
+  useEffect(() => {
+    fetchProduct();
+  }, []);
+
+useEffect(() => {
+  if (loadAllData) {
+    console.log("load")
+    setLoadAllData(false);
+    fetchProduct();
+  }
+}, [loadAllData]);
+
+  const fetchProduct= async () => {
+      try {
+        const data = await getMyProducts();
+        setProduct(data);
+        const names = data.map((item) => item.p_name);
+        const quantities = data.map((item) => item.Stock.s_quantity);
+
+        setCategories(names);
+        setQuantities(quantities);
+      } catch (error) {
+        console.error("Error fetching customers:", error);
+      }
+  };
+
+  // Product functions
+  const handleAddProduct =  async (e) => {
+    e.preventDefault()
+    setLoadAllData(true);
+
+    const productData = {
+      ...productForm,
+      p_price: Number.parseFloat(productForm.p_price),
+      imp_quantity: Number.parseInt(productForm.imp_quantity)
+    }
+
+    if (editingProduct) {
+      // productAPI.update(editingProduct.productid, productData)
+      await updateProduct(productData, editingProduct.p_id)
+      setEditingProduct(null)
+    } else {
+      // productAPI.create(productData)
+      await postProduct(productData);
+    }
+    setLoadAllData(true);
+    setProductForm({
+      "p_name": "",
+      "p_price": "",
+      "imp_quantity": ""
+    })
+    setIsProductDialogOpen(false)
+    setLoadAllData(true);
+  }
+
+  const handleEditProduct = (product) => {
+    setEditingProduct(product)
+    setProductForm({
+      p_name: product.p_name,
+      p_price: product.p_price,
+      imp_quantity: product.imp_quantity
+    })
+    setIsProductDialogOpen(true)
+  }
+
+  const handleDeleteProduct = async (id) => {
+  if (confirm("Are you sure you want to delete this product?")) {
+    await deleteProduct(id);
+    setLoadAllData(true);
+    setLoadAllData(true);
+  }
+
+
+};
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between">
+        <div>
+        <h2 className="text-3xl font-bold tracking-tight text-foreground">Product Analysis</h2>
+        <p className="text-muted-foreground">
+          Detailed insights into product performance and inventory
+        </p>
+        </div>
+        <div className="mb-10">
+                <Input
+                  type="text"
+                  placeholder="Search by product name..."
+                  className=""
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+        </div>
+      </div>
+
+      <Tabs defaultValue="performance" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
+          <TabsTrigger value="Bar chart">Stock Levels</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="performance" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+              <CardTitle>Products</CardTitle>
+              <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    onClick={() => {
+                      setEditingProduct(null)
+                      setProductForm({
+                        "p_name": "",
+                        "p_price": "",
+                        "imp_quantity": ""
+                      })
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Product
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-white max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
+                    <DialogDescription>
+                      {editingProduct ? "Update product information" : "Enter product information below"}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleAddProduct} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="productname">Product Name</Label>
+                      <Input
+                        id="productname"
+                        placeholder="Enter product name"
+                        value={productForm.p_name}
+                        onChange={(e) => setProductForm({ ...productForm, p_name: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="unitprice">Unit Price</Label>
+                        <Input
+                          id="unitprice"
+                          type="number"
+                          step="0.01"
+                          placeholder="Enter price"
+                          value={productForm.p_price}
+                          onChange={(e) => setProductForm({ ...productForm, p_price: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="stockquantity">Stock Quantity</Label>
+                        <Input
+                          id="stockquantity"
+                          type="number"
+                          placeholder="Enter stock quantity"
+                          value={productForm.imp_quantity}
+                          onChange={(e) => setProductForm({ ...productForm, imp_quantity: e.target.value })}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <Button type="submit" className="w-full bg-blue-500 text-white hover:bg-blue-300">
+                      <Save className="w-4 h-4 mr-2" />
+                      {editingProduct ? "Update Product" : "Add Product"}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent className="overflow-y-auto max-h-110">
+              <Table>
+                <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-indigo-700">Product Name</TableHead>
+                      <TableHead className="text-indigo-700">Price</TableHead>
+                      <TableHead className="text-indigo-700">Stock</TableHead>
+                      {/* <TableHead>Status</TableHead> */}
+                      <TableHead className="text-right text-indigo-700">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                <TableBody>
+      {filteredProducts.length > 0 ? filteredProducts.map((product) => (
+        <TableRow key={product.p_id}>
+          <TableCell className="font-medium">{product.p_name}</TableCell>
+          <TableCell>${product.p_price}</TableCell>
+          <TableCell>{product.Stock.s_quantity}</TableCell>
+          <TableCell>
+            <div className="space-x-2 text-right">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleEditProduct(product)}
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  handleDeleteProduct(product.p_id);
+                  setLoadAllData(true);
+                }}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          </TableCell>
+        </TableRow>
+      )) : (
+        <TableRow>
+          <TableCell colSpan={6} className="text-center">
+            No matching products
+          </TableCell>
+        </TableRow>
+      )}
+    </TableBody>
+              </Table>    
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="Bar chart" className="space-y-4">
+          
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};

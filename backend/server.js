@@ -2,6 +2,7 @@ import express from 'express';
 import './model/relational/relation.js';
 import cors from "cors";
 import router from './routes/post.js';
+
 import sequelize from './ulits/database.js';
 
 
@@ -34,5 +35,3 @@ const PORT = 4000;
 })();
 
 app.use('/api/', router);
-
-

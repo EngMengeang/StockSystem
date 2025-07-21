@@ -19,9 +19,8 @@ const menuItems = [
   { id: 'overview' as const, label: 'Overview', icon: BarChart3 },
   { id: 'sales' as const, label: 'Sales Performance', icon: TrendingUp },
   { id: 'inventory' as const, label: 'Inventory Management', icon: Package },
-  // { id: 'customers' as const, label: 'Customer Insights', icon: Users },
-  // { id: 'employees' as const, label: 'Employee Performance', icon: UserCheck },
   { id: 'products' as const, label: 'Product Analysis', icon: ShoppingCart },
+  { id: 'sale' as const, label: 'Sale', icon: ShoppingCart },
 ];
 
 export const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {

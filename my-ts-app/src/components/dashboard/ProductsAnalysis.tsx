@@ -1,8 +1,9 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { LineChart } from '@mui/x-charts/LineChart';
 import {
   Dialog,
   DialogContent,
@@ -10,167 +11,139 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+} from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Package, TrendingUp, AlertCircle, Edit, Settings, Plus, Save, Trash2 } from "lucide-react";
-import { useState, useEffect } from "react";
-// api
-import { getMyProducts, getProductByName, postProduct } from '@/services/productService'
+import { Edit, Plus, Save, Trash2 } from "lucide-react";
+import {
+  getMyProducts,
+  postProduct,
+  updateProduct,
+  deleteProduct,
+} from "@/services/productService";
 
 export const ProductAnalysis = () => {
-  const [products, setProduct] = useState([]);
-  const [isProductDialogOpen, setIsProductDialogOpen] = useState(false)
-  const [productForm, setProductForm] = useState({
-    "p_name": "",
-    "p_price": "",
-    "imp_quantity": ""
-  })
+  const [products, setProducts] = useState([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [productForm, setProductForm] = useState({ p_name: "", p_price: "", imp_quantity: "" });
   const [editingProduct, setEditingProduct] = useState(null);
-  const [loadAllData, setLoadAllData] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [edit , setedit]= useState(false);
 
-  useEffect(() => {
-    fetchProduct();
-  }, []);
+  //
+  const [categories, setCategories] = useState([]);
+  const [prices, setPrices] = useState([]);
+  const [lowStockItems, setLowStockItems] = useState([]);
 
-  useEffect(() => {
-    if (loadAllData) {
-      fetchProduct();
-      setLoadAllData(false);
+  const fetchProducts = async () => {
+    try {
+      const data = await getMyProducts();
+      setProducts(data);
+      const names = data.map((item) => item.p_name);
+        const productPrices = data.map((item) => item.p_price);
+        const lowStock = data.filter((item) => item.Stock.s_quantity <= 10);
+        
+        setLowStockItems(lowStock);
+        setCategories(names);
+        setPrices(productPrices);
+    } catch (error) {
+      console.error("Error fetching products:", error);
     }
-  }, [loadAllData]);
-
-  const fetchProduct= async () => {
-      try {
-        const data = await getMyProducts();
-        setProduct(data);
-      } catch (error) {
-        console.error("Error fetching customers:", error);
-      }
   };
 
-  // Product functions
-  const handleAddProduct = (e) => {
-    e.preventDefault()
-    const productData = {
-      ...productForm,
-      p_price: Number.parseFloat(productForm.p_price),
-      imp_quantity: Number.parseInt(productForm.imp_quantity)
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const productData = {
+        ...productForm,
+        p_price: parseFloat(productForm.p_price),
+        imp_quantity: parseInt(productForm.imp_quantity),
+      };
+
+      if (!productData.p_name || isNaN(productData.p_price) || isNaN(productData.imp_quantity)) {
+        alert("Please fill in all fields correctly.");
+        return;
+      }
+
+      if (editingProduct) {
+        console.log()
+        await updateProduct(productData, editingProduct.p_id);
+        setEditingProduct(null);
+      } else {
+        await postProduct(productData);
+      }
+
+      setProductForm({ p_name: "", p_price: "", imp_quantity: "" });
+      setIsDialogOpen(false);
+      fetchProducts();
+    } catch (error) {
+      console.error("Error saving product:", error);
     }
+  };
 
-    // if (editingProduct) {
-    //   // productAPI.update(editingProduct.productid, productData)
-    //   updateProduct(editingProduct.productid, productData)
-    //   setEditingProduct(null)
-    // } else {
-      // productAPI.create(productData)
-      postProduct(productData);
-    // }
-    setProductForm({
-      "p_name": "",
-      "p_price": "",
-      "imp_quantity": ""
-    })
-    setIsProductDialogOpen(false)
-    setLoadAllData(true);
-  }
+  const handleEdit = (product) => {
+  setEditingProduct(product);
+  setProductForm({
+    p_name: product.p_name || "",
+    p_price: product.p_price !== undefined ? parseFloat(product.p_price).toString() : "",
+    imp_quantity: product.imp_quantity !== undefined ? parseInt(product.imp_quantity).toString() : "",
+  });
+  setIsDialogOpen(true);
+  console.log(edit)
+};
 
-  // const handleEditProduct = (product) => {
-  //   setEditingProduct(product)
-  //   setProductForm({
-  //     productname: product.productname,
-  //     unitprice: product.unitprice.toString(),
-  //     producttype: product.producttype,
-  //     supplier: product.supplier,
-  //     stockquantity: product.stockquantity.toString(),
-  //   })
-  //   setIsProductDialogOpen(true)
-  // }
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this product?")) {
+      await deleteProduct(id);
+      fetchProducts();
+      
+    }
+  };
 
-  // const handleDeleteProduct = (id) => {
-  //   if (confirm("Are you sure you want to delete this product?")) {
-  //     deleteProduct(id)
-  //     setLoadAllData(true);
-  //   }
-  // }
+  const filteredProducts = products.filter((p) =>
+    p.p_name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight text-foreground">Product Analysis</h2>
-        <p className="text-muted-foreground">
-          Detailed insights into product performance and inventory
-        </p>
+      <div className="flex justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-foreground">Product Analysis</h2>
+          <p className="text-muted-foreground">Detailed insights into product performance and inventory</p>
+        </div>
+        <div className="mb-10">
+          <Input
+            type="text"
+            placeholder="Search by product name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Product Categories</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{products.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Active categories
-            </p>
-          </CardContent>
-        </Card> */}
-
-        {/* <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Best Selling</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Snacks</div>
-            <p className="text-xs text-muted-foreground">
-              Top category by volume
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stock Alerts</CardTitle>
-            <AlertCircle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">5</div>
-            <p className="text-xs text-muted-foreground">
-              Products need restocking
-            </p>
-          </CardContent>
-        </Card> */}
-      </div>
-
-      <Tabs defaultValue="performance" className="space-y-4">
+      <Tabs defaultValue="performance">
         <TabsList>
           <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="stock">Stock Levels</TabsTrigger>
-          <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsTrigger value="bar-chart">Stock Levels</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="performance" className="space-y-4">
+        <TabsContent value="performance">
           <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
+            <CardHeader className="flex justify-between items-center">
               <CardTitle>Products</CardTitle>
-              <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button
                     onClick={() => {
-                      setEditingProduct(null)
-                      setProductForm({
-                        "p_name": "",
-                        "p_price": "",
-                        "imp_quantity": ""
-                      })
+                      setEditingProduct(null);
+                      setProductForm({ p_name: "", p_price: "", imp_quantity: "" });
                     }}
                   >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Product
+                    <Plus className="w-4 h-4 mr-2" /> Add Product
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="bg-white max-w-2xl">
@@ -180,12 +153,11 @@ export const ProductAnalysis = () => {
                       {editingProduct ? "Update product information" : "Enter product information below"}
                     </DialogDescription>
                   </DialogHeader>
-                  <form onSubmit={handleAddProduct} className="space-y-4">
+                  <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="productname">Product Name</Label>
                       <Input
                         id="productname"
-                        placeholder="Enter product name"
                         value={productForm.p_name}
                         onChange={(e) => setProductForm({ ...productForm, p_name: e.target.value })}
                         required
@@ -198,7 +170,6 @@ export const ProductAnalysis = () => {
                           id="unitprice"
                           type="number"
                           step="0.01"
-                          placeholder="Enter price"
                           value={productForm.p_price}
                           onChange={(e) => setProductForm({ ...productForm, p_price: e.target.value })}
                           required
@@ -209,7 +180,6 @@ export const ProductAnalysis = () => {
                         <Input
                           id="stockquantity"
                           type="number"
-                          placeholder="Enter stock quantity"
                           value={productForm.imp_quantity}
                           onChange={(e) => setProductForm({ ...productForm, imp_quantity: e.target.value })}
                           required
@@ -217,98 +187,83 @@ export const ProductAnalysis = () => {
                       </div>
                     </div>
                     <Button type="submit" className="w-full bg-blue-500 text-white hover:bg-blue-300">
-                      <Save className="w-4 h-4 mr-2" />
-                      {editingProduct ? "Update Product" : "Add Product"}
+                      <Save className="w-4 h-4 mr-2" /> {editingProduct ? "Update Product" : "Add Product"}
                     </Button>
                   </form>
                 </DialogContent>
               </Dialog>
-              </div>
             </CardHeader>
+
             <CardContent className="overflow-y-auto max-h-110">
               <Table>
                 <TableHeader>
-                    <TableRow>
-                      <TableHead>Product Name</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Stock</TableHead>
-                      {/* <TableHead>Status</TableHead> */}
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  <TableRow>
+                    <TableHead className="text-indigo-700">Product Name</TableHead>
+                    <TableHead className="text-indigo-700">Price</TableHead>
+                    <TableHead className="text-indigo-700">Stock</TableHead>
+                    <TableHead className="text-right text-indigo-700">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
                 <TableBody>
-                  { products.length > 0 ? products.map((product, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{product.p_name}</TableCell>
-                    <TableCell>${product.p_price}</TableCell>
-                    <TableCell>{product.Stock.s_quantity}</TableCell>
-                    {/* <TableCell>
-                      <Badge variant={product.lowStock ? "destructive" : "default"}>
-                        {product.lowStock ? "Low Stock" : "In Stock"}
-                      </Badge>
-                    </TableCell> */}
-                    <TableCell>
-                      <div className="space-x-2 text-right">
-                        <Button variant="ghost" size="sm">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>)
+                  {filteredProducts.length > 0 ? (
+                    filteredProducts.map((product) => (
+                      <TableRow key={product.p_id}>
+                        <TableCell>{product.p_name}</TableCell>
+                        <TableCell>${product.p_price}</TableCell>
+                        <TableCell>{product.Stock?.s_quantity ?? 0}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="space-x-2">
+                            <Button variant="ghost" size="sm" onClick={() => {handleEdit(product); setedit(true)}}>
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(product.p_id)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center">
-                        No products found
+                      <TableCell colSpan={4} className="text-center">
+                        No matching products
                       </TableCell>
                     </TableRow>
                   )}
                 </TableBody>
-              </Table>    
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* <TabsContent value="stock" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Current Stock Levels</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Motor Oil 5W-30</span>
-                  <Badge variant="destructive">Low (3 units)</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Energy Drinks</span>
-                  <Badge variant="destructive">Low (12 units)</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Candy Bars</span>
-                  <Badge variant="secondary">Good (156 units)</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Coffee</span>
-                  <Badge variant="secondary">Good (89 units)</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="bar-chart">
+          {/* Add bar chart visualization here */}
+          <Card className="pr-6">
+          <CardHeader>
+            <CardTitle>Sales Price</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">Sales chart will be displayed here</p>
+          </CardContent>
+          <LineChart
+            xAxis={[
+              {
+                id: 'products',
+                data: categories,
+                scaleType: 'point',
+              },
+            ]}
+            series={[
+              {
+                data: prices,
+                label: 'Price ($)',
+                color: '#007bff',
+              },
+            ]}
+            height={300}
+          />
+        </Card>
         </TabsContent>
-
-        <TabsContent value="categories" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Sales by Category</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Category performance chart will be displayed here</p>
-            </CardContent>
-          </Card>
-        </TabsContent> */}
       </Tabs>
     </div>
   );
