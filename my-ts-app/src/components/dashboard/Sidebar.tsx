@@ -31,7 +31,7 @@ export const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
             <div className="flex items-center">
               <Package className="h-8 w-8 text-blue-600" />
               <h1 className="ml-3 text-2xl font-bold text-gray-900">
-                ProductHub
+                STS
               </h1>
             </div>
           </div>
