@@ -1,169 +1,124 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState, useEffect } from "react";
-import { BarChart } from '@mui/x-charts/BarChart';
-import { AlertTriangle, Package, Fuel, Edit, Settings  } from "lucide-react";
-// select
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-// table
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button";
-// api
-import { getsales } from "@/services/salesService";
-import { getMyProducts, getProductByName, postProduct, deleteProduct, updateProduct } from '@/services/productService'
+import { DollarSign, ReceiptText, ShoppingCart, Wallet, Lightbulb } from "lucide-react";
+import { useOverview } from "@/hooks/useOverview";
+import { PageHeader, Panel, StatCard, Empty, ErrorBox, th, td, money } from "./kit";
+import { PeriodFilter } from "./PeriodFilter";
+import { CategoryMix, HeatGrid, MarginScatter, TopProductsBars } from "./charts";
 
+const DAYS = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
 
 export const SalesPerformance = () => {
-  const [sales, setSales] = useState([]);
-    // bar chart
-  const [categories, setCategories] = useState([]);
-  const [quantities, setQuantities] = useState([]);
-  const [highestSaleProduct, setHighestSaleProduct] = useState(null);
-  const [loadingSales, setLoadingSales] = useState(true);
+  const { data, error, loading, from, to, productId, setProductId, categoryId, setCategoryId, categories, products, setRange, retry } = useOverview();
 
-  useEffect(() => {
-    fetchProduct();
-  }, []);
+  if (error && !data) return <ErrorBox message={error} onRetry={retry} />;
+  if (!data) return <p className="p-6 text-sm text-slate-500">Loading…</p>;
 
-  useEffect(() => {
-    // Call Higthsales whenever 'sales' data changes
-    if (sales.length > 0) {
-      setHighestSaleProduct(getHighestSalesProduct);
-    }
-  }, [sales]);
+  const { totals, range, products: stats } = data;
+  const aov = totals.orders ? totals.revenue / totals.orders : 0;
+  const margin = totals.revenue ? (totals.profit / totals.revenue) * 100 : 0;
+  const total = stats.reduce((s, p) => s + p.revenue, 0) || 1;
 
-  const fetchProduct= async () => {
-        try {
-          const data = await getsales();
-          setSales(data);
-          const names = data.map((item) => item.p_name);
-          const quantities = data.map((item) => item.quantity);
-  
-          setCategories(names);
-          setQuantities(quantities);
-        } catch (error) {
-          console.error("Error fetching customers:", error);
-        } finally {
-          setLoadingSales(false);
-        }
-    };
+  const topShare = (stats.slice(0, 10).reduce((s, p) => s + p.revenue, 0) / total) * 100;
 
-    const getHighestSalesProduct = () => { // Renamed from Higthsales for clarity and consistency
-      if (sales.length === 0) {
-        return null;
-      }
+  // plain-language findings computed from the numbers
+  let run = 0;
+  const to80 = stats.findIndex((p) => (run += p.revenue) / total >= 0.8) + 1 || stats.length;
+  const bestDay = [...data.by_weekday].sort((a, b) => b.revenue - a.revenue)[0];
+  const bestSlot = [...data.heatmap].sort((a, b) => b.revenue - a.revenue)[0];
+  const bestMargin = [...stats].filter((p) => p.revenue > 0).sort((a, b) => b.profit / b.revenue - a.profit / a.revenue)[0];
+  const insights = [
+    stats.length ? `${to80} of ${stats.length} products bring in 80% of your sales.` : "",
+    bestDay ? `${DAYS[bestDay.dow]} are the best sales day (${money(bestDay.revenue)}).` : "",
+    bestSlot ? `Busiest hour: ${bestSlot.hour % 12 || 12}${bestSlot.hour < 12 ? "am" : "pm"} on ${DAYS[bestSlot.dow]}.` : "",
+    bestMargin ? `${bestMargin.name} has the best profit margin at ${((bestMargin.profit / bestMargin.revenue) * 100).toFixed(0)}%.` : "",
+  ].filter(Boolean);
 
-      // Use reduce to find the item with the maximum quantity
-      const highest = sales.reduce((prev, current) => {
-          return (prev.quantity > current.quantity) ? prev : current;
-      });
-
-      console.log(highest)
-
-      return highest;
-    };
-  
   return (
     <div className="space-y-6">
-      {/* Higth Sales */}
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight text-foreground">Sales Performance</h2>
-        <p className="text-muted-foreground"></p>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 m-4">
-          <Card>
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Higth Sales
-                  </p>
-                  {highestSaleProduct && (
-                    <p className="text-2xl font-bold text-gray-900">
-                      {highestSaleProduct.p_name} (
-                      {highestSaleProduct.quantity})
-                    </p>
-                  )}
-                </div>
-                <Package className="h-8 w-8 text-blue-500" />
-              </div>
-            </div>
-        </Card>
-        </div>
-        <Tabs defaultValue="performance" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="performance">Performance</TabsTrigger>
-              <TabsTrigger value="Bar chart">Stock Levels</TabsTrigger>
-            </TabsList>
-            <TabsContent value="performance" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Sales
-                </p>
-              </div>
-            </div>
-          <BarChart
-            xAxis={[
-              {
-                id: 'products',
-                data: categories,
-                scaleType: 'band',
-              },
-            ]}  
-            series={[
-              {
-                data: quantities,
-                label: 'Stock Quantity',
-                color: '#3ddc3dff'
-              },
-            ]}
-            height={400} 
-          />
-        </TabsContent>
-        
-        <TabsContent value="Bar chart" className="space-y-4">
-          {loadingSales ? (
-            <p className="text-indigo-600">Loading sales data...</p>
-          ) : sales.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white rounded-lg shadow-md">
-                <thead className="">
-                  <tr>
-                    <th className="py-3 px-4 text-left text-sm font-medium text-indigo-700 uppercase tracking-wider rounded-tl-lg">
-                      Product ID
-                    </th>
-                    <th className="py-3 px-4 text-left text-sm font-medium text-indigo-700 uppercase tracking-wider">
-                      Product Name
-                    </th>
-                    <th className="py-3 px-4 text-left text-sm font-medium text-indigo-700 uppercase tracking-wider rounded-tr-lg">
-                      Quantity Sold
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 overflow-y-auto max-h-110">
-                  {sales.map((product) => (
-                    <tr key={product.p_id} className="hover:bg-gray-50">
-                      <td className="py-3 px-4 whitespace-nowrap text-base text-gray-700">
-                        {product.p_id}
-                      </td>
-                      <td className="py-3 px-4 whitespace-nowrap text-base text-gray-700">
-                        {product.p_name}
-                      </td>
-                      <td className="py-3 px-4 whitespace-nowrap text-base text-gray-700">
-                        {product.quantity} units
+      <div className="space-y-5">
+        <PageHeader title="Sales Performance" subtitle={`What sells, when it sells, and how profitable it is${loading ? " · updating…" : ""}`} />
+        <PeriodFilter products={products} productId={productId} onProduct={setProductId} categories={categories} categoryId={categoryId} onCategory={setCategoryId} from={from} to={to} firstSale={range.first_sale} onChange={setRange} />
+      </div>
+
+      {error && <p role="alert" className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error} Showing the last numbers that loaded. <button onClick={retry} className="font-semibold underline">Try again</button></p>}
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Sales" value={money(totals.revenue)} note={`${range.from} to ${range.to}`} icon={DollarSign} tone="indigo" />
+        <StatCard label="Profit" value={money(totals.profit)} note={`${margin.toFixed(1)}% margin`} icon={Wallet} tone="emerald" />
+        <StatCard label="Number of sales" value={totals.orders.toLocaleString()} note={`${totals.units.toLocaleString()} items sold`} icon={ShoppingCart} tone="violet" />
+        <StatCard label="Average sale" value={`$${aov.toFixed(2)}`} note="Money per sale" icon={ReceiptText} tone="amber" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Panel className="lg:col-span-2" title="Which products sell the most?" subtitle={`Your top ${Math.min(10, stats.length)} products by sales in this period. The longer the bar, the more money it brought in.`}>
+          {stats.length === 0 ? <Empty>No sales in this period</Empty> : (
+            <>
+              <TopProductsBars products={stats} />
+              <p className="mt-2 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                These {Math.min(10, stats.length)} products make <strong className="text-slate-900">{topShare.toFixed(0)}%</strong> of all your sales.
+              </p>
+            </>
+          )}
+        </Panel>
+        <Panel title="Quick facts" subtitle="Worked out from this period"
+          action={<span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-50 text-amber-600"><Lightbulb className="h-4 w-4" /></span>}>
+          {insights.length === 0 ? <Empty>No sales in this period</Empty> : (
+            <ul className="space-y-3">
+              {insights.map((t) => (
+                <li key={t} className="flex gap-3 rounded-xl bg-slate-50 p-3.5 text-sm leading-relaxed text-slate-700">
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-500" />{t}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
+
+      <Panel title="When do customers buy?" subtitle="Darker = more sales. Shows the busiest days and hours.">
+        {data.heatmap.length === 0 ? <Empty>No sales in this period</Empty> : <HeatGrid cells={data.heatmap} />}
+      </Panel>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Panel title="Which products earn well?" subtitle="Each dot is a product. Further right = more sales. Higher up = more profit on each sale.">
+          {stats.length === 0 ? <Empty>No sales in this period</Empty> : <MarginScatter products={stats} />}
+        </Panel>
+        <Panel title="What kinds of products are selling?" subtitle="Sales by type, over time">
+          {data.category_trend.length === 0 ? <Empty>No sales in this period</Empty> : <CategoryMix trend={data.category_trend} days={data.daily.map((d) => d.day)} />}
+        </Panel>
+      </div>
+
+      <Panel title="Every product" subtitle="Sales, profit and profit margin for each product">
+        {stats.length === 0 ? <Empty>No sales in this period</Empty> : (
+          <div className="scroll-soft max-h-[460px] overflow-auto rounded-xl border border-slate-100">
+            <table className="w-full">
+              <thead className="sticky top-0 bg-slate-50">
+                <tr><th className={th}>#</th><th className={th}>Product</th><th className={th}>Category</th><th className={th}>Sold</th><th className={th}>Sales</th><th className={th}>Profit</th><th className={th}>Profit %</th><th className={`${th} w-40`}>Share</th></tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {stats.map((p, i) => {
+                  const m = p.revenue ? (p.profit / p.revenue) * 100 : 0;
+                  return (
+                    <tr key={p.p_id} className="transition-colors hover:bg-slate-50/70">
+                      <td className={`${td} text-slate-400`}>{i + 1}</td>
+                      <td className={`${td} font-medium text-slate-900`}>{p.name}</td>
+                      <td className={td}>{p.category}</td>
+                      <td className={`${td} tabular-nums`}>{p.units.toLocaleString()}</td>
+                      <td className={`${td} tabular-nums`}>{money(p.revenue)}</td>
+                      <td className={`${td} tabular-nums`}>{money(p.profit)}</td>
+                      <td className={`${td} tabular-nums ${m < 25 ? "text-rose-600" : ""}`}>{m.toFixed(0)}%</td>
+                      <td className={td}>
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${(p.revenue / total) * 100}%` }} /></div>
+                          <span className="w-10 text-right text-xs tabular-nums text-slate-500">{((p.revenue / total) * 100).toFixed(0)}%</span>
+                        </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-gray-500">No sales data available.</p>
-          )}
-        </TabsContent>
-        </Tabs>
-      </div>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
     </div>
   );
 };

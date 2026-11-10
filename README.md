@@ -1,417 +1,215 @@
-# StockSystem — Inventory & Sales Management Application
+# StockSystem
 
-A full-stack web application for managing product inventory, tracking sales, monitoring stock levels, and analyzing business performance. Built with a React/TypeScript frontend and a Node.js/Express backend connected to a PostgreSQL database.
+A stock and sales tracking system with a business dashboard. Record sales, manage products and stock, and see
+how the business is doing: sales and profit over time, best sellers, busiest hours, what is running low, and where
+money is tied up.
 
----
+The demo data is an Apple reseller (iPhone, iPad, Mac, Apple Watch, Accessories), so the charts have something real to show.
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Database Schema](#database-schema)
-- [API Reference](#api-reference)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Backend Setup](#backend-setup)
-  - [Frontend Setup](#frontend-setup)
-- [Environment Variables](#environment-variables)
-- [Usage Guide](#usage-guide)
-- [Screenshots / UI Sections](#ui-sections)
-
----
-
-## Overview
-
-StockSystem is a business inventory management platform that allows store operators to:
-
-- Track product stock levels in real time
-- Record and monitor sales transactions
-- Manage product imports and expired goods
-- View sales performance with charts and analytics
-- Perform full CRUD operations on products via a dashboard UI
-
-The system is divided into two parts:
-- **`backend/`** — REST API server powered by Node.js, Express, Sequelize ORM, and PostgreSQL
-- **`my-ts-app/`** — Single Page Application (SPA) built with React, TypeScript, Vite, and Tailwind CSS
-
----
-
-## Features
-
-| Feature | Description |
+| | |
 |---|---|
-| User Authentication | JWT-based login system with secure token management |
-| Product Management | Create, read, update, and delete products |
-| Stock Tracking | Real-time stock levels per product |
-| Sales Recording | Submit sales transactions that deduct from stock |
-| Import Tracking | Log product imports to increase stock |
-| Expiry Management | Track expired products and deduct from inventory |
-| Overview Dashboard | KPIs, low-stock alerts, and total sales summary |
-| Sales Performance | Bar charts showing top-selling products |
-| Inventory Analysis | Comprehensive stock reports including imports and expirations |
-| Product Analysis | Search, filter, and manage products from the dashboard |
+| **Backend** | Node.js, Express 5, Sequelize, PostgreSQL |
+| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS 4, MUI X Charts, shadcn/ui |
+| **Tested with** | 32 end-to-end API tests, 36 frontend unit tests |
 
 ---
 
-## Tech Stack
+## What you can do
 
-### Frontend (`my-ts-app/`)
+| Page | What it is for |
+|---|---|
+| **Overview** | The big picture for any date range: sales, profit, items sold, inventory value and write-offs (with a small trend line on each). Sales over time compared with the period before, profit margin, a health check (profit margin, stock level, write-off rate), sales and profit by product type, the last 12 months, where the money goes (sales to profit), best sellers, busiest days, and products running low. |
+| **Sales Performance** | Your top 10 products with the dollar amount on each bar, quick facts in plain words, a weekday-by-hour heatmap of when customers buy, which products earn well (sales vs profit per sale), what types are selling over time, and a table of every product. |
+| **Inventory** | Is there enough stock (stock next to each product's reorder level), how long it will last at the current pace, stock coming in and going out each week, money sitting in stock by type, write-off losses, and a table of every product with a **write off** button. |
+| **Products** | Add, edit and delete products (price, cost, type, low-stock level, opening stock). Search, filter by type, see profit margin. **Import many products from a CSV file.** |
+| **New Sale** | Click **Add** on any product to build a sale, adjust quantities, and complete it in one step. Filter by type or search. **Import many sales from a CSV file.** |
 
-| Technology | Version | Purpose |
-|---|---|---|
-| React | 19.1.0 | UI framework |
-| TypeScript | 5.8.3 | Type-safe JavaScript |
-| Vite | 7.0.3 | Build tool and dev server |
-| Tailwind CSS | 4.1.11 | Utility-first styling |
-| shadcn/ui | — | Pre-built accessible components |
-| Material-UI (MUI) | — | Charts (`LineChart`, `BarChart`) |
-| React Router DOM | 7.6.3 | Client-side routing |
-| TanStack React Query | — | Server state and data fetching |
-| Axios | — | HTTP client for API calls |
-| Lucide React | — | Icon library |
-
-### Backend (`backend/`)
-
-| Technology | Version | Purpose |
-|---|---|---|
-| Node.js | — | JavaScript runtime |
-| Express | 5.1.0 | Web framework |
-| Sequelize | 6.37.7 | ORM for PostgreSQL |
-| PostgreSQL (pg) | 8.16.3 | Relational database |
-| JSON Web Token | — | Authentication tokens |
-| bcryptjs | — | Password hashing utility |
-| dotenv | — | Environment variable management |
-| CORS | — | Cross-origin resource sharing |
-| nodemon | — | Auto-reload during development |
+Every dashboard page can be filtered by **date range** (quick buttons, year/month dropdowns, or calendars), **type** (iPhone, Mac, ...)
+and **product**. The filters stay the same when you move between pages.
 
 ---
 
-## Project Structure
+## Getting started
+
+### You need
+- Node.js 20 or newer
+- PostgreSQL 14 or newer, running locally, and an empty database for the app (for example `stocks`)
+
+### 1. Backend
+
+```bash
+cd backend
+npm install
+cp .env.example .env        # then open .env and fill in your database details and a JWT_SECRET
+npm run dev                 # API on http://localhost:4000  (use `npm start` for a plain run without auto-reload)
+```
+
+On first start the server creates or upgrades all tables by itself.
+
+Create the first login user (a password of at least 6 characters; it is stored as a hash):
+
+```bash
+npm run create-user -- admin your-password
+```
+
+### 2. Demo data (optional)
+
+```bash
+psql -U postgres -d stocks -f backend/sampleData.sql
+```
+
+This loads 25 Apple products, 90 days of sales, deliveries, write-offs and consistent stock levels.
+**It replaces all products, categories, stock, deliveries, write-offs and sales in that database** (it leaves the login table alone), so only use it on a database you are happy to overwrite.
+
+### 3. Frontend
+
+```bash
+cd my-ts-app
+npm install
+npm run dev                 # http://localhost:5173
+```
+
+Open http://localhost:5173 and sign in with the user you created. If the API is not on `http://localhost:4000`,
+copy `my-ts-app/.env.example` to `.env` and set `VITE_API_URL`.
+
+---
+
+## Importing from CSV
+
+Both import buttons show a **preview** and flag every problem row before anything is saved. If any row is wrong, nothing is imported.
+Each page has a **Sample CSV** link; the files live in `my-ts-app/public/samples/`.
+
+| Where | Columns | Notes |
+|---|---|---|
+| **New Sale** > Import CSV | `product, quantity, date` | `date` is optional (`YYYY-MM-DD`, blank = today, never in the future). Products must already exist. Stock is reduced, and a past date back-dates the sale. |
+| **Products** > Import CSV | `name, type, price, cost, stock, reorder_level` | A name that already exists is **updated**, and its `stock` is **added** as a delivery. A blank `cost` or `reorder_level` keeps the current value. A new `type` creates a new type. |
+
+- Up to 2,000 rows per file and 1 MB.
+- Money can be written like `1299`, `1,299.50` or `$1,299`.
+- Comma or semicolon separated, with or without quotes. A name containing an inch mark is written `"MacBook Air 13"""`, which spreadsheet programs do for you.
+
+---
+
+## Database
+
+PostgreSQL, managed by Sequelize. Tables are created and upgraded automatically when the server starts
+(`backend/db/migrate.js` keeps data safe when upgrading an older database, for example moving free-text categories into a table).
+
+| Table | Purpose | Main columns |
+|---|---|---|
+| `categories` | Product types (iPhone, Mac, ...) | `category_id`, `name` (unique) |
+| `products` | The catalogue | `p_id`, `p_name` (unique ignoring capitals), `p_price`, `p_cost`, `category_id`, `sku` (unique), `reorder_level`, `is_active`, `createdAt` |
+| `stocks` | Current stock per product | `p_id`, `s_quantity` (never below 0) |
+| `sales` | One row per product sold | `p_id`, `quantity` (above 0), `unit_price` (the price **at the time of sale**), `createdAt` |
+| `imports` | Deliveries | `p_id`, `imp_quantity`, `unit_cost`, `createdAt` |
+| `expires` | Write-offs (damaged, expired, unsellable) | `p_id`, `quantity`, `createdAt` |
+| `userschema` | Logins | `id`, `username`, `password` (bcrypt hash) |
+
+**Rules the database enforces by itself**
+
+- No negative prices, costs or stock; no zero or negative quantities.
+- A product that has sales can never be deleted, so past revenue and profit stay correct. The app **hides** it instead (`is_active = false`).
+- Selling checks stock, deducts it and records the sale in one locked step, so two sales at the same moment can never oversell. Twelve simultaneous sales of a product with 5 in stock let exactly 5 through.
+- Because each sale keeps its own `unit_price`, changing a product's price later does not rewrite history.
+
+---
+
+## API
+
+Base URL `http://localhost:4000/api`. JSON in and out. Everything except login and health needs `Authorization: Bearer <token>`.
+
+| Group | Endpoint | What it does |
+|---|---|---|
+| Public | `POST /login` | `{ username, password }` returns `{ token, user }` (valid 8 hours) |
+| | `GET /health` | Is the server up |
+| Products | `GET /products` | Active products with stock and type |
+| | `POST /products` | Create a product, or add stock if the name already exists |
+| | `PUT /products/:id` | Update price, cost, type, name, SKU, low-stock level |
+| | `DELETE /products/:id` | Delete, or hide if it has sales |
+| | `GET /products/name/:name` | Look up one product by name |
+| | `POST /products/import` | Bulk add/update (CSV import), all or nothing |
+| Types | `GET /categories`, `POST /categories` | List / create a type |
+| Selling | `POST /products/sale` | One product, `{ p_name, quantity }` |
+| | `POST /sales/batch` | Many lines at once (cart checkout and CSV import), all or nothing |
+| Stock | `POST /products/expire` | Write off all remaining stock of a product |
+| | `GET /products/expired`, `/products/sales`, `/products/inventory-summary` | Simple lists and totals |
+| Dashboard | `GET /analytics/overview` | Every number on the Overview and Sales pages. Query: `from`, `to` (`YYYY-MM-DD`), `product_id`, `category_id` |
+| | `GET /analytics/inventory` | Days of stock left, weekly stock flow, write-off losses, stock value by type |
+
+Errors always come back as JSON with a plain message, for example `400 { "message": "Price must be a number of 0 or more." }`.
+
+---
+
+## Security and error handling
+
+- **Login required** for all data. A missing or expired token returns you to the sign-in page with a short message.
+- **Passwords are hashed** (bcrypt). The login answer never says whether the username or the password was wrong.
+- **Strict input checks** on every endpoint (prices, quantities, ids, dates, text length). Bad input gets a clear 400, never a server error.
+- **The server will not start without `JWT_SECRET`.** No secrets are kept in the code; settings live in `backend/.env`, which git ignores.
+- If the server is down, each page shows "Cannot reach the server" with a **Try again** button.
+
+---
+
+## Configuration
+
+`backend/.env` (see `backend/.env.example`)
+
+| Variable | Meaning |
+|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` | PostgreSQL connection |
+| `JWT_SECRET` | Required. Any long random text |
+| `PORT` | API port (default 4000) |
+| `BUSINESS_TZ` | Time zone for the weekday/hour charts, for example `Asia/Phnom_Penh` (default UTC) |
+
+`my-ts-app/.env` (optional): `VITE_API_URL`, the API address (default `http://localhost:4000/api`).
+
+---
+
+## Tests
+
+```bash
+# Backend: start the API first (npm start), then in a second terminal:
+cd backend && npm test        # 32 end-to-end tests against the real database; it cleans up after itself
+
+# Frontend
+cd my-ts-app && npm test      # 36 unit tests: CSV reader, number parsing, date-filter logic
+```
+
+The API tests cover login and tokens, input checks, duplicate and hidden products, stock never going negative (including under 12 simultaneous sales),
+all-or-nothing batch and CSV imports, the database's own rules, and that every dashboard number adds up to the same total and matches the database.
+
+---
+
+## Project structure
 
 ```
 StockSystem/
-├── README.md
-│
-├── backend/                         # Express REST API
-│   ├── server.js                    # App entry point, server startup
-│   ├── package.json
-│   ├── controller/
-│   │   ├── authController.js        # Login & JWT token generation
-│   │   └── productPost.js           # Product, sales, inventory controllers
-│   ├── middleware/
-│   │   └── authen.js                # JWT authentication middleware
-│   ├── model/                       # Sequelize models (database tables)
-│   │   ├── product.js               # Products table
-│   │   ├── stock.js                 # Stock table
-│   │   ├── sale.js                  # Sales table
-│   │   ├── importProduct.js         # Product imports table
-│   │   ├── expireProduct.js         # Expired products table
-│   │   └── relational/
-│   │       └── relation.js          # ORM associations (FK relationships)
-│   ├── respositories/
-│   │   └── psqlProduct.js           # All database queries (data access layer)
-│   ├── routes/
-│   │   └── post.js                  # All API route definitions
-│   └── ulits/
-│       ├── database.js              # Sequelize connection configuration
-│       └── db.js                    # Secondary DB utility
-│
-└── my-ts-app/                       # React TypeScript frontend
-    ├── index.html                   # HTML entry template
-    ├── vite.config.ts               # Vite configuration
-    ├── tsconfig.json                # TypeScript config
-    ├── components.json              # shadcn/ui configuration
-    ├── package.json
+├── backend/
+│   ├── server.js               start-up: connect, upgrade the database, routes, JSON errors
+│   ├── routes/post.js          all routes; everything after login is protected
+│   ├── controller/             request checks and answers (auth, products, dashboard, bulk)
+│   ├── respositories/          all database work (queries, transactions, dashboard SQL)
+│   ├── model/                  Sequelize tables and how they connect
+│   ├── middleware/authen.js    token check
+│   ├── ulits/                  database connection, input validators
+│   ├── db/                     migrate.js (safe upgrades), createUser.js
+│   ├── sampleData.sql          demo data (Apple reseller)
+│   └── test/api.test.js        end-to-end tests
+└── my-ts-app/
+    ├── public/samples/         sample CSV files
     └── src/
-        ├── main.tsx                 # React DOM root entry point
-        ├── App.tsx                  # App-level routing
-        ├── App.css
-        ├── index.css                # Global styles (Tailwind directives)
-        ├── components/
-        │   ├── Dashboard.tsx        # Main dashboard layout and login gate
-        │   ├── ui/                  # shadcn/ui base components
-        │   │   ├── button.tsx
-        │   │   ├── card.tsx
-        │   │   ├── dialog.tsx
-        │   │   ├── input.tsx
-        │   │   ├── label.tsx
-        │   │   ├── select.tsx
-        │   │   ├── tabs.tsx
-        │   │   ├── table.tsx
-        │   │   ├── toast.tsx
-        │   │   ├── tooltip.tsx
-        │   │   └── badge.tsx
-        │   └── dashboard/           # Feature-specific dashboard sections
-        │       ├── Overview.tsx         # KPI metrics and analytics
-        │       ├── SalesPerformance.tsx # Sales charts and top sellers
-        │       ├── InventoryManagement.tsx # Stock, imports, expiry tracking
-        │       ├── ProductsAnalysis.tsx # Product CRUD management
-        │       ├── salePage.tsx         # Sale transaction form
-        │       └── Sidebar.tsx          # Navigation sidebar
-        ├── pages/
-        │   ├── Index.tsx            # Root page (renders Dashboard)
-        │   └── NotFound.tsx         # 404 page
-        ├── services/                # Axios API service modules
-        │   ├── loginService.tsx     # Authentication API calls
-        │   ├── productService.tsx   # Products API calls
-        │   ├── salesService.tsx     # Sales API calls
-        │   └── inventoryService.tsx # Inventory API calls
-        ├── hooks/
-        │   ├── use-mobile.tsx       # Responsive mobile detection hook
-        │   └── use-toast.ts         # Toast notification hook
-        └── lib/
-            └── utils.ts             # cn() class name utility
+        ├── components/Dashboard.tsx        login screen and app shell
+        ├── components/dashboard/           the five pages, charts, filter bar, calendar, CSV importer
+        ├── hooks/                          shared filters, dashboard data loading
+        ├── services/                       API calls
+        └── lib/                            session/token, CSV reader, date-filter logic, formatting (+ tests)
 ```
 
 ---
 
-## Database Schema
+## Good to know
 
-The application uses PostgreSQL with Sequelize managing five tables:
-
-### `products`
-| Column | Type | Description |
-|---|---|---|
-| `p_id` | INT (PK, AUTO) | Product ID |
-| `p_name` | VARCHAR | Product name |
-| `p_price` | FLOAT | Product price |
-
-### `stock`
-| Column | Type | Description |
-|---|---|---|
-| `s_id` | INT (PK, AUTO) | Stock record ID |
-| `p_id` | INT (FK) | References `products.p_id` |
-| `s_quantity` | INT | Current quantity in stock |
-
-### `sale`
-| Column | Type | Description |
-|---|---|---|
-| `sale_id` | INT (PK, AUTO) | Sale ID |
-| `p_id` | INT (FK) | References `products.p_id` |
-| `quantity` | INT | Quantity sold |
-| `createdAt` | TIMESTAMP | Auto-managed by Sequelize |
-| `updatedAt` | TIMESTAMP | Auto-managed by Sequelize |
-
-### `imports`
-| Column | Type | Description |
-|---|---|---|
-| `imp_id` | INT (PK, AUTO) | Import ID |
-| `p_id` | INT (FK) | References `products.p_id` |
-| `imp_quantity` | INT | Quantity imported |
-
-### `expires`
-| Column | Type | Description |
-|---|---|---|
-| `exp_id` | INT (PK, AUTO) | Expiry record ID |
-| `p_id` | INT (FK) | References `products.p_id` |
-| `quantity` | INT | Quantity marked as expired |
-
-### `userschema`
-| Column | Description |
-|---|---|
-| `id` | User ID |
-| `username` | Login username |
-| `password` | Stored password |
-
-### Relationships
-- `products` → `stock` : One-to-One (CASCADE delete)
-- `products` → `sale` : One-to-Many (CASCADE delete)
-- `products` → `imports` : One-to-Many (CASCADE delete)
-- `products` → `expires` : One-to-Many (CASCADE delete)
-
----
-
-## API Reference
-
-**Base URL:** `http://localhost:4000/api`
-
-### Authentication
-
-| Method | Endpoint | Description | Body |
-|---|---|---|---|
-| `POST` | `/login` | Login and receive JWT token | `{ username, password }` |
-
-**Response:**
-```json
-{
-  "token": "<jwt_token>"
-}
-```
-
----
-
-### Products
-
-| Method | Endpoint | Description | Body / Params |
-|---|---|---|---|
-| `GET` | `/products` | Get all products with stock levels | — |
-| `POST` | `/products` | Create a new product | `{ p_name, p_price }` |
-| `PUT` | `/products/:id` | Update product price | `{ p_price }` |
-| `DELETE` | `/products/:id` | Delete a product | — |
-| `GET` | `/products/name/:name` | Find product by name | URL param: `name` |
-
----
-
-### Sales
-
-| Method | Endpoint | Description | Body |
-|---|---|---|---|
-| `POST` | `/products/sale` | Record a sale (deducts from stock) | `{ p_name, quantity }` |
-| `GET` | `/products/sales` | Get all sales aggregated by product | — |
-
----
-
-### Inventory
-
-| Method | Endpoint | Description | Body |
-|---|---|---|---|
-| `GET` | `/products/inventory-summary` | Get full inventory report (stock, imports, expiry) | — |
-| `POST` | `/products/expire` | Mark quantity of a product as expired | `{ p_name, quantity }` |
-| `GET` | `/products/expired` | Get list of all expired product records | — |
-
----
-
-## Getting Started
-
-### Prerequisites
-
-Ensure the following are installed on your machine:
-
-- [Node.js](https://nodejs.org/) v18 or higher
-- [PostgreSQL](https://www.postgresql.org/) v13 or higher
-- npm or yarn
-
----
-
-### Backend Setup
-
-1. **Navigate to the backend directory:**
-   ```bash
-   cd StockSystem/backend
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Create a `.env` file** in the `backend/` directory:
-   ```env
-   DB_NAME=your_database_name
-   DB_USER=your_postgres_username
-   DB_HOST=localhost
-   DB_PASSWORD=your_postgres_password
-   JWT_SECRET=your_jwt_secret_key
-   PORT= PORT
-   ```
-
-4. **Create the PostgreSQL database:**
-   ```sql
-   CREATE DATABASE your_database_name;
-   ```
-
-5. **Start the backend server:**
-   ```bash
-   npm start
-   ```
-   The server will start on `http://localhost:{PORT}`.
-   Sequelize will automatically sync and create all required tables on startup.
-
----
-
-### Frontend Setup
-
-1. **Navigate to the frontend directory:**
-   ```bash
-   cd StockSystem/my-ts-app
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Start the development server:**
-   ```bash
-   npm run dev
-   ```
-   The app will be available at `http://localhost:5173`.
-
-4. **Build for production:**
-   ```bash
-   npm run build
-   ```
-   Output will be in `my-ts-app/dist/`.
-
----
-
-## Environment Variables
-
-### Backend (`backend/.env`)
-
-| Variable | Description | Example |
-|---|---|---|
-| `DB_NAME` | PostgreSQL database name | `stockdb` |
-| `DB_USER` | PostgreSQL username | `postgres` |
-| `DB_HOST` | PostgreSQL host address | `localhost` |
-| `DB_PASSWORD` | PostgreSQL password | `yourpassword` |
-| `JWT_SECRET` | Secret key for signing JWT tokens | `mysecretkey` |
-| `PORT` | Port for the Express server | `4000` |
-
-> The frontend API base URL is currently hardcoded as `http://localhost:4000/api` in the service files.
-
----
-
-## Usage Guide
-
-### 1. Login
-On first load, the application presents a login form. Enter valid credentials stored in the `userschema` table to receive a JWT token and access the dashboard.
-
-### 2. Overview (Dashboard Home)
-- View total sales count, total products, and total stock
-- See low-stock alerts for products running out
-- Review sales trend data via charts
-
-### 3. Sales Performance
-- View a bar chart of top-selling products
-- Browse a full sales table with product name and total quantity sold
-
-### 4. Inventory Management
-- Monitor current stock levels per product
-- View import history and quantities
-- Track expired product records
-- Submit new expired product entries via form
-
-### 5. Product Analysis (CRUD)
-- Search products by name
-- Add new products (name + price)
-- Update existing product prices
-- Delete products (cascades to all related records)
-
-### 6. Record a Sale
-- Navigate to the "Sale" section
-- Enter product name and quantity
-- Submit to deduct from stock and record the transaction
-
----
-
-## UI Sections
-
-| Section | Description |
-|---|---|
-| **Overview** | Business KPIs, low-stock alerts, price trend charts |
-| **Sales Performance** | Bar chart per product, ranked sales table |
-| **Inventory Management** | Stock per product, import log, expiry log |
-| **Product Analysis** | Full product CRUD with search and price editing |
-| **Sale** | Quick sale transaction form |
-
----
-
-## Notes
-
-- The backend uses Sequelize `sync({ alter: true })` on startup, which auto-creates or modifies tables to match models.
-- All foreign key relationships use `CASCADE` delete, so removing a product will remove all related stock, sales, import, and expiry records.
-- The frontend communicates with the backend using Axios with the JWT token attached in the `Authorization` header after login.
-- There is currently no `.env` file for the frontend; the backend API URL is defined directly in the service files under `src/services/`.
+- **Dates and time zones.** Dates are in UTC unless you set `BUSINESS_TZ`; that only affects the weekday and hour charts. A sale made late in the evening in a time zone ahead of UTC can fall on the next day in the daily totals.
+- **Write-offs** remove *all* remaining stock of a product in one step, and cannot be undone.
+- **Demo data replaces data.** Do not run `sampleData.sql` on a database with real records.
+- Older versions of this project stored passwords as plain text and had the database password in the source code. If you ever used that version, change the database password.

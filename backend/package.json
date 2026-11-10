@@ -1,11 +1,14 @@
 {
-  "name": "project",
+  "name": "stocksystem-backend",
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon server.js"
+    "test": "node --test \"test/*.test.js\"",
+    "start": "node server.js",
+    "test:api": "node --test test/api.test.js",
+    "create-user": "node db/createUser.js",
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "",

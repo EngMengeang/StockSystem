@@ -1,13 +1,14 @@
-// server.js
 import axios from 'axios';
-const API_URL = "http://localhost:4000/api/products";
+import { API_URL } from "@/lib/config";
 
-export const postsale = async (data) => {
-  const response = await axios.post(`${API_URL}/sale`, data);
+const BASE = `${API_URL}/products`;
+
+export const postsale = async (data: { p_name: string; quantity: number }) => {
+  const response = await axios.post(`${BASE}/sale`, data);
   return response.data;
 };
 
 export const getsales = async () => {
-  const response = await axios.get(`${API_URL}/sales`);
+  const response = await axios.get(`${BASE}/sales`);
   return response.data;
 };

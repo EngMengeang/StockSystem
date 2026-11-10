@@ -1,8 +1,9 @@
 import axios from 'axios';
-const API_URL = "http://localhost:4000/api";
+import { API_URL } from "@/lib/config";
+import { setToken } from "@/lib/session";
 
-export const getlogin = async (data) => {
+export const getlogin = async (data: { username: string; password: string }) => {
   const response = await axios.post(`${API_URL}/login`, data);
-  console.log(response.data)
+  if (response.data?.token) setToken(response.data.token);
   return response.data;
 };

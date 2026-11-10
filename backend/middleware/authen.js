@@ -1,12 +1,14 @@
-import sequelize from "../ulits/database";
+import jwt from "jsonwebtoken";
 
-const connectToDatabase = async () => {
-    try {
-        await sequelize.authenticate();
-        console.log('✅ DB connected');
-    } catch (error) {
-        console.error('❌ DB connection failed:', error);
-    }
-};
-
-connectToDatabase();
+/** Require a valid "Authorization: Bearer <token>" header. */
+export function requireAuth(req, res, next) {
+  const header = req.headers.authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!token) return res.status(401).json({ message: "Please sign in." });
+  try {
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ message: "Your session has expired. Please sign in again." });
+  }
+}
